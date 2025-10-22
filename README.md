@@ -63,3 +63,17 @@
 - **Web アプリが開かない**: 一度 `🌐 WebアプリURL設定` を再入力し、デプロイ URL が有効か確認します。アクセス権が制限されている場合は共有設定を見直してください。
 - **Gemini 連携が動作しない**: API キーが有効期限切れでないかを確認し、`🔑 Gemini APIキー設定` から再登録します。
 - **データを初期化したい**: `🗑️ データ全削除（注意）` は全タブのデータを消去します。手順を誤ると復旧できないため、実行前にバックアップを取得してください。
+
+## Contributing
+- プルリクエスト歓迎です。規模が大きい変更は事前に Issue で相談してください。
+- `clasp pull` で最新状態を取り込み、`clasp run initializeSpreadsheet` などの手動テストを実施してから提出してください。
+- `AGENTS.md` のレビュー手順・コミット規約・手動テスト記録フォーマットに従ってください。
+
+## 公開前チェックリスト
+- `.clasp.json` に本番と異なる `scriptId` や個人アカウント情報が含まれていないことを確認する。
+- スプレッドシート／Apps Script プロパティに保存した API キーやシークレットを削除またはマスクする。
+- `README.md`・`manual.html`・`curriculum.html` の手順が現行仕様と一致しているか再確認する。
+- 依存する外部サービスの利用規約（Gemini API など）と学校の情報セキュリティ指針に適合していることを確認する。
+
+## License
+This project is licensed under the MIT License. See `LICENSE` for full text.
