@@ -1,0 +1,1194 @@
+<script>
+  // ========== 定数定義 ==========
+  const APP_CONFIG = {
+    IMAGE: {
+      DEFAULT_ICON: "🍴",
+      HEIGHT: 120,
+      PLACEHOLDER_COLOR: "#f0f0f0",
+      ICON_SIZE: 48,
+    },
+    STOCK: {
+      LOW_THRESHOLD: 10,
+      EMPTY: 0,
+    },
+    UI: {
+      MODAL_ANIMATION_DELAY: 0,
+      LOADING_TEXT: "読み込み中...",
+      ERROR_COLOR: "#f44336",
+      SUCCESS_COLOR: "#4CAF50",
+      WARNING_COLOR: "#ff9800",
+    },
+    PAYMENT: {
+      CASH_ROUND_UNIT: 1000,
+      METHODS: {
+        CASH: "現金",
+        QR: "QR",
+      },
+    },
+  };
+
+  // ========== アプリケーション状態 ==========
+  const appState = {
+    cart: [],
+    products: [],
+    recognition: null,
+    isProcessing: false,
+  };
+
+  // ========== カート管理オブジェクト ==========
+  const CartManager = {
+    // カートに商品を追加
+    add: function (product) {
+      const existingItem = appState.cart.find(
+        (item) => item["商品ID"] === product["商品ID"],
+      );
+
+      if (existingItem) {
+        const newQuantity = existingItem["数量"] + 1;
+        if (newQuantity <= product["現在庫"]) {
+          existingItem["数量"] = newQuantity;
+          return { success: true };
+        } else {
+          return { success: false, message: "在庫が不足しています" };
+        }
+      } else {
+        appState.cart.push({
+          ...product,
+          数量: 1,
+        });
+        return { success: true };
+      }
+    },
+
+    // 数量を更新
+    updateQuantity: function (index, change) {
+      const item = appState.cart[index];
+      const product = appState.products.find(
+        (p) => p["商品ID"] === item["商品ID"],
+      );
+      const newQuantity = item["数量"] + change;
+
+      if (
+        newQuantity >= 1 &&
+        newQuantity <= (product ? product["現在庫"] : 999)
+      ) {
+        item["数量"] = newQuantity;
+        return true;
+      }
+      return false;
+    },
+
+    // カートから削除
+    remove: function (index) {
+      appState.cart.splice(index, 1);
+    },
+
+    // カートをクリア
+    clear: function () {
+      appState.cart = [];
+    },
+
+    // 合計金額を計算
+    getTotal: function () {
+      return appState.cart.reduce(
+        (sum, item) => sum + item["価格"] * item["数量"],
+        0,
+      );
+    },
+
+    // カートが空かチェック
+    isEmpty: function () {
+      return appState.cart.length === 0;
+    },
+  };
+
+  // ========== 初期化処理 ==========
+  window.onload = function () {
+    loadShopSettings();
+    loadProducts();
+    setupVoiceRecognition();
+    checkInventoryAlerts(); // 在庫アラートチェック
+    // 定期的に在庫アラートをチェック（5分ごと）
+    setInterval(checkInventoryAlerts, 5 * 60 * 1000);
+  };
+
+  // 店舗設定を読み込む
+  function loadShopSettings() {
+    google.script.run
+      .withSuccessHandler(function (settings) {
+        if (settings && settings.shop_name) {
+          document.getElementById("shopName").textContent = settings.shop_name;
+        }
+      })
+      .getShopSettings();
+  }
+
+  // Google Drive画像URLを処理する関数
+  function formatGoogleDriveUrl(url) {
+    if (!url || url.trim() === "") return "";
+
+    try {
+      url = url.trim();
+      // Google DriveのURLかどうかを確認
+      if (url.includes("drive.google.com")) {
+        // 様々なGoogle Drive URLパターンに対応
+        let fileId = null;
+
+        if (url.includes("/file/d/")) {
+          // 通常の共有リンク形式
+          fileId = url.match(/\/file\/d\/([-\w]{25,})/)?.[1];
+        } else if (url.includes("id=")) {
+          // id=パラメータ形式
+          fileId = url.match(/id=([-\w]{25,})/)?.[1];
+        } else {
+          // その他のパターン
+          fileId = url.match(/[-\w]{25,}/)?.[0];
+        }
+
+        if (fileId) {
+          // 直接画像を表示するためのURLを生成
+          return "https://lh3.googleusercontent.com/d/" + fileId;
+        }
+      }
+
+      // URLが有効かチェック
+      try {
+        new URL(url);
+        return url;
+      } catch (e) {
+        console.log("Invalid URL format:", url);
+        return "";
+      }
+    } catch (e) {
+      console.log("Error processing URL:", e);
+      return "";
+    }
+  }
+
+  // 商品を読み込む
+  function loadProducts() {
+    google.script.run
+      .withSuccessHandler(displayProducts)
+      .withFailureHandler(showError)
+      .getProductsWithStock();
+  }
+
+  // ========== 商品表示関連 ==========
+  // 商品を表示
+  function displayProducts(productData) {
+    appState.products = productData;
+    const grid = document.getElementById("productGrid");
+    grid.innerHTML = "";
+
+    appState.products.forEach((product) => {
+      const tile = createProductTile(product);
+      grid.appendChild(tile);
+    });
+  }
+
+  // 商品タイルを作成
+  function createProductTile(product) {
+    const tile = document.createElement("div");
+    tile.className = "product-tile";
+
+    const isOutOfStock = product["現在庫"] <= APP_CONFIG.STOCK.EMPTY;
+    const isLowStock =
+      product["現在庫"] > APP_CONFIG.STOCK.EMPTY &&
+      product["現在庫"] <= APP_CONFIG.STOCK.LOW_THRESHOLD;
+
+    if (isOutOfStock) {
+      tile.className += " disabled";
+    }
+
+    tile.setAttribute("data-category", product["カテゴリ"] || "");
+    tile.innerHTML = createProductTileHTML(product, isLowStock);
+
+    if (!isOutOfStock) {
+      tile.onclick = () => handleProductClick(product);
+    }
+
+    return tile;
+  }
+
+  // 商品タイルのHTMLを生成
+  function createProductTileHTML(product, isLowStock) {
+    const imageHtml = createProductImageHTML(product);
+    const isOutOfStock = (product["現在庫"] || 0) <= APP_CONFIG.STOCK.EMPTY;
+    const stockClass = isOutOfStock
+      ? "stock-soldout"
+      : isLowStock
+        ? "low-stock"
+        : "";
+    const stockText = isOutOfStock
+      ? "在庫切れ"
+      : (product["現在庫"] || 0) + "個";
+    const stockBadge = isOutOfStock
+      ? '<div class="sold-out-badge">在庫切れ</div>'
+      : "";
+    const stockLabel =
+      !isOutOfStock && isLowStock
+        ? '<br><span style="font-size: 0.65em;">残少</span>'
+        : "";
+
+    return (
+      stockBadge +
+      imageHtml +
+      '<div class="product-category">' +
+      (product["カテゴリ"] || "") +
+      "</div>" +
+      '<h3 style="margin: 0.5em 0; font-size: 1em;">' +
+      (product["商品名"] || "") +
+      "</h3>" +
+      '<div class="product-price">¥' +
+      (product["価格"] || 0).toLocaleString() +
+      "</div>" +
+      '<div class="product-stock ' +
+      stockClass +
+      '">' +
+      stockText +
+      stockLabel +
+      "</div>"
+    );
+  }
+
+  // 商品画像のHTMLを生成
+  function createProductImageHTML(product) {
+    const imageUrl = formatGoogleDriveUrl(product["画像URL"]);
+    const imageStyle =
+      "height: " +
+      APP_CONFIG.IMAGE.HEIGHT +
+      "px; margin-bottom: 8px; border-radius: 4px;";
+
+    if (imageUrl) {
+      return (
+        '<div class="product-image" style="' +
+        imageStyle +
+        ' overflow: hidden;">' +
+        '<img src="' +
+        imageUrl +
+        '" alt="' +
+        product["商品名"] +
+        '" ' +
+        'style="width: 100%; height: 100%; object-fit: cover;" ' +
+        'onerror="handleImageError(this)">' +
+        "</div>"
+      );
+    } else {
+      return createPlaceholderImage(imageStyle);
+    }
+  }
+
+  // プレースホルダー画像を作成
+  function createPlaceholderImage(imageStyle) {
+    return (
+      '<div class="product-image" style="' +
+      imageStyle +
+      " background-color: " +
+      APP_CONFIG.IMAGE.PLACEHOLDER_COLOR +
+      "; " +
+      'display: flex; align-items: center; justify-content: center;">' +
+      '<span style="color: #999; font-size: ' +
+      APP_CONFIG.IMAGE.ICON_SIZE +
+      'px;">' +
+      APP_CONFIG.IMAGE.DEFAULT_ICON +
+      "</span>" +
+      "</div>"
+    );
+  }
+
+  // 画像エラーハンドラ
+  function handleImageError(img) {
+    const parent = img.parentElement;
+    parent.innerHTML =
+      '<span style="color: #999; font-size: ' +
+      APP_CONFIG.IMAGE.ICON_SIZE +
+      'px;">' +
+      APP_CONFIG.IMAGE.DEFAULT_ICON +
+      "</span>";
+    parent.style.display = "flex";
+    parent.style.alignItems = "center";
+    parent.style.justifyContent = "center";
+    parent.style.backgroundColor = APP_CONFIG.IMAGE.PLACEHOLDER_COLOR;
+  }
+
+  // 商品クリックハンドラ
+  function handleProductClick(product) {
+    const result = CartManager.add(product);
+    if (!result.success) {
+      alert(result.message);
+    }
+    updateCartDisplay();
+  }
+
+  // カートに追加（互換性のため残す）
+  function addToCart(product) {
+    handleProductClick(product);
+  }
+
+  // ========== カート表示関連 ==========
+  // カート表示を更新
+  function updateCartDisplay() {
+    const elements = getCartElements();
+
+    if (CartManager.isEmpty()) {
+      displayEmptyCart(elements);
+    } else {
+      displayCartItems(elements);
+    }
+  }
+
+  // カート関連要素を取得
+  function getCartElements() {
+    return {
+      cartDiv: document.getElementById("cartItems"),
+      totalDiv: document.getElementById("totalAmount"),
+      cashButton: document.getElementById("cashButton"),
+      qrButton: document.getElementById("qrButton"),
+    };
+  }
+
+  // 空のカートを表示
+  function displayEmptyCart(elements) {
+    elements.cartDiv.innerHTML = `
+        <div class="cart-empty">
+          <p>カートは空です</p>
+          <p style="font-size: 0.9em; margin-top: 10px;">商品をタップして追加してください</p>
+        </div>
+      `;
+    elements.totalDiv.innerHTML = "合計: <span>¥0</span>";
+    elements.cashButton.disabled = true;
+    elements.qrButton.disabled = true;
+  }
+
+  // カートアイテムを表示
+  function displayCartItems(elements) {
+    elements.cashButton.disabled = false;
+    elements.qrButton.disabled = false;
+    elements.cartDiv.innerHTML = "";
+
+    appState.cart.forEach((item, index) => {
+      const itemDiv = createCartItemElement(item, index);
+      elements.cartDiv.appendChild(itemDiv);
+    });
+
+    const total = CartManager.getTotal();
+    elements.totalDiv.innerHTML = `合計: <span>¥${total.toLocaleString()}</span>`;
+  }
+
+  // カートアイテム要素を作成
+  function createCartItemElement(item, index) {
+    const itemDiv = document.createElement("div");
+    itemDiv.className = "cart-item";
+
+    const product = appState.products.find(
+      (p) => p["商品ID"] === item["商品ID"],
+    );
+    const maxQuantity = product ? product["現在庫"] : item["数量"];
+
+    itemDiv.innerHTML = createCartItemHTML(item, index, maxQuantity);
+    return itemDiv;
+  }
+
+  // カートアイテムのHTMLを生成
+  function createCartItemHTML(item, index, maxQuantity) {
+    return `
+        <div class="cart-item-info">
+          <div class="cart-item-name">${item["商品名"]}</div>
+          <div class="cart-item-quantity">¥${item["価格"]} × ${item["数量"]}個</div>
+        </div>
+        <div class="cart-item-actions">
+          <div class="quantity-control">
+            <button class="quantity-btn" onclick="updateQuantity(${index}, -1)" ${item["数量"] <= 1 ? "disabled" : ""}>
+              -
+            </button>
+            <span class="quantity-display">${item["数量"]}</span>
+            <button class="quantity-btn" onclick="updateQuantity(${index}, 1)" ${item["数量"] >= maxQuantity ? "disabled" : ""}>
+              +
+            </button>
+          </div>
+          <button class="remove-btn" onclick="removeFromCart(${index})">削除</button>
+        </div>
+        <div class="cart-item-price">¥${(item["価格"] * item["数量"]).toLocaleString()}</div>
+      `;
+  }
+
+  // 数量を更新
+  function updateQuantity(index, change) {
+    if (CartManager.updateQuantity(index, change)) {
+      updateCartDisplay();
+    }
+  }
+
+  // カートから削除
+  function removeFromCart(index) {
+    CartManager.remove(index);
+    updateCartDisplay();
+  }
+
+  // カートをクリア
+  function clearCart() {
+    if (!CartManager.isEmpty() && confirm("カートをクリアしますか？")) {
+      CartManager.clear();
+      updateCartDisplay();
+      // 音声注文のログをクリア
+      document.getElementById("voiceStatus").textContent = "";
+    }
+  }
+
+  // ========== 決済処理関連 ==========
+  // 決済処理
+  function processPayment(method) {
+    if (CartManager.isEmpty()) {
+      alert("カートが空です");
+      return;
+    }
+
+    if (appState.isProcessing) {
+      return; // 二重処理を防ぐ
+    }
+
+    const total = CartManager.getTotal();
+
+    if (method === APP_CONFIG.PAYMENT.METHODS.QR) {
+      showQRPaymentModal(total);
+    } else {
+      showCashPaymentModal(total);
+    }
+  }
+
+  // モーダル表示のヘルパー関数
+  function showModal() {
+    const modal = document.getElementById("customModal");
+    modal.style.display = "flex";
+  }
+
+  // モーダルを閉じる
+  function closeModal() {
+    const modal = document.getElementById("customModal");
+    modal.style.display = "none";
+    appState.isProcessing = false;
+  }
+
+  // QR決済モーダル表示
+  function showQRPaymentModal(total) {
+    const modal = document.getElementById("customModal");
+    const modalContent = document.getElementById("modalContent");
+
+    modalContent.innerHTML = `
+        <h2 style="margin-bottom: 20px;">QR決済</h2>
+        <p style="font-size: 1.2em; margin-bottom: 20px;">
+          合計金額: <strong style="color: #667eea;">¥${total.toLocaleString()}</strong>
+        </p>
+        <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          <p style="margin-bottom: 10px;">QRコードを表示してお客様に読み取ってもらってください</p>
+          <p style="color: #666; font-size: 0.9em;">※決済確認後に「決済完了」ボタンを押してください</p>
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+          <button onclick="completeQRPayment()" class="button button-primary">決済完了</button>
+          <button onclick="closeModal()" class="button button-danger">キャンセル</button>
+        </div>
+      `;
+
+    // モーダルを表示
+    modal.style.display = "flex";
+
+    // グローバル関数として定義
+    window.closeModal = function () {
+      modal.style.display = "none";
+      appState.isProcessing = false;
+    };
+
+    window.completeQRPayment = function () {
+      modal.style.display = "none";
+      submitPayment(APP_CONFIG.PAYMENT.METHODS.QR);
+    };
+
+    appState.isProcessing = true;
+  }
+
+  // 現金決済モーダル表示
+  function showCashPaymentModal(total) {
+    const modal = document.getElementById("customModal");
+    const modalContent = document.getElementById("modalContent");
+    const defaultAmount =
+      Math.ceil(total / APP_CONFIG.PAYMENT.CASH_ROUND_UNIT) *
+      APP_CONFIG.PAYMENT.CASH_ROUND_UNIT;
+
+    modalContent.innerHTML = createCashModalHTML(total, defaultAmount);
+
+    // モーダルを表示
+    modal.style.display = "flex";
+
+    // グローバル関数として定義
+    window.currentTotal = total;
+
+    window.closeModal = function () {
+      modal.style.display = "none";
+      appState.isProcessing = false;
+    };
+
+    window.setQuickAmount = function (amount) {
+      document.getElementById("receivedAmount").value = amount;
+      calculateChange();
+    };
+
+    window.calculateChange = function () {
+      const received =
+        parseInt(document.getElementById("receivedAmount").value) || 0;
+      const change = received - total;
+
+      updateChangeDisplay(received, total, change);
+    };
+
+    window.completeCashPayment = function () {
+      const received =
+        parseInt(document.getElementById("receivedAmount").value) || 0;
+      if (received < total) {
+        alert("お預かり金額が不足しています");
+        return;
+      }
+
+      modal.style.display = "none";
+      submitPayment(APP_CONFIG.PAYMENT.METHODS.CASH);
+    };
+
+    // タイムアウトを使って、DOMが更新された後にイベントリスナーを設定
+    setTimeout(() => {
+      const input = document.getElementById("receivedAmount");
+      if (input) {
+        input.addEventListener("input", calculateChange);
+        input.focus();
+        input.select();
+        // 初期計算
+        calculateChange();
+      }
+    }, 100);
+
+    appState.isProcessing = true;
+  }
+
+  // 現金モーダルのHTML生成
+  function createCashModalHTML(total, defaultAmount) {
+    const quickAmounts = [1000, 2000, 3000, 5000, 10000];
+    const quickButtonsHTML = quickAmounts
+      .map(
+        (amount) =>
+          `<button class="quick-amount-btn" onclick="setQuickAmount(${amount})" style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; background: white; cursor: pointer;">¥${amount.toLocaleString()}</button>`,
+      )
+      .join("");
+
+    return `
+        <h2 style="margin-bottom: 20px;">💴 現金決済</h2>
+        <div style="background: #f0f0f0; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+          <p style="font-size: 1.3em; margin: 0;">合計金額</p>
+          <p style="font-size: 2em; font-weight: bold; color: #667eea; margin: 5px 0;">¥${total.toLocaleString()}</p>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; margin-bottom: 10px; font-weight: bold;">お預かり金額</label>
+          <input type="number" id="receivedAmount" style="width: 100%; padding: 15px; font-size: 1.5em; text-align: center; border: 2px solid #ddd; border-radius: 8px;" 
+                 placeholder="0" min="${total}" step="100" value="${defaultAmount}">
+        </div>
+        
+        <div id="changeDisplay" style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none;">
+          <p style="font-size: 1.1em; margin: 0;">おつり</p>
+          <p id="changeAmount" style="font-size: 2em; font-weight: bold; color: #4caf50; margin: 5px 0;">¥0</p>
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: center;">
+          <button id="confirmCashBtn" onclick="completeCashPayment()" class="button button-primary" style="flex: 1;">決済確定</button>
+          <button onclick="closeModal()" class="button button-secondary" style="flex: 1;">カートに戻る</button>
+        </div>
+        
+        <div style="margin-top: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+          ${quickButtonsHTML}
+          <button class="quick-amount-btn" onclick="setQuickAmount(${total})" style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; background: white; cursor: pointer;">ちょうど</button>
+        </div>
+      `;
+  }
+
+  // おつり表示を更新
+  function updateChangeDisplay(received, total, change) {
+    const changeDisplay = document.getElementById("changeDisplay");
+    const changeAmount = document.getElementById("changeAmount");
+    const confirmBtn = document.getElementById("confirmCashBtn");
+
+    if (received >= total) {
+      changeDisplay.style.display = "block";
+      changeAmount.textContent = "¥" + change.toLocaleString();
+      confirmBtn.disabled = false;
+      confirmBtn.style.opacity = "1";
+    } else {
+      changeDisplay.style.display = "none";
+      confirmBtn.disabled = true;
+      confirmBtn.style.opacity = "0.5";
+    }
+  }
+
+  // 決済を送信
+  function submitPayment(method) {
+    // ボタンを無効化
+    document.getElementById("cashButton").disabled = true;
+    document.getElementById("qrButton").disabled = true;
+
+    google.script.run
+      .withSuccessHandler(paymentSuccess)
+      .withFailureHandler(paymentError)
+      .processTransaction(appState.cart, method);
+  }
+
+  // 決済成功
+  function paymentSuccess(result) {
+    // resultはオブジェクト {success: true, transactionId: "...", total: ...}
+    const transactionId = result.transactionId || result;
+    const total = result.total || CartManager.getTotal();
+
+    // カスタム成功モーダルを表示
+    showSuccessModal(transactionId, total);
+    resetAfterPayment();
+  }
+
+  // 決済エラー
+  function paymentError(error) {
+    console.error("Payment error:", error);
+    alert("エラーが発生しました: " + error.message);
+    enablePaymentButtons();
+    appState.isProcessing = false;
+  }
+
+  // 成功モーダルを表示
+  function showSuccessModal(transactionId, total) {
+    const modal = document.getElementById("customModal");
+    const modalContent = document.getElementById("modalContent");
+
+    const successHtml = `
+        <div style="text-align: center; padding: 20px;">
+          <div style="font-size: 72px; margin-bottom: 20px;">✅</div>
+          <h2 style="color: #2ecc71; margin-bottom: 20px;">決済完了！</h2>
+          
+          <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <div style="margin-bottom: 15px;">
+              <div style="font-size: 14px; color: #666;">取引ID</div>
+              <div style="font-size: 18px; font-weight: bold; color: #333; word-break: break-all;">
+                ${transactionId}
+              </div>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+              <div style="font-size: 14px; color: #666;">合計金額</div>
+              <div style="font-size: 24px; font-weight: bold; color: #333;">
+                ¥${total.toLocaleString()}
+              </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+              <div style="font-size: 16px; color: #666;">
+                ご利用ありがとうございました！
+              </div>
+            </div>
+          </div>
+          
+          <button onclick="closeSuccessModal()" style="
+            background: #2ecc71;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+          ">
+            OK
+          </button>
+        </div>
+      `;
+
+    modalContent.innerHTML = successHtml;
+    modal.style.display = "block";
+
+    // 3秒後に自動的に閉じる
+    setTimeout(() => {
+      closeSuccessModal();
+    }, 3000);
+  }
+
+  // 成功モーダルを閉じる
+  function closeSuccessModal() {
+    closeModal();
+    enablePaymentButtons();
+  }
+
+  // 決済後のリセット
+  function resetAfterPayment() {
+    CartManager.clear();
+    updateCartDisplay();
+    loadProducts();
+    clearVoiceStatus();
+    appState.isProcessing = false;
+  }
+
+  // 決済ボタンを有効化
+  function enablePaymentButtons() {
+    document.getElementById("cashButton").disabled = false;
+    document.getElementById("qrButton").disabled = false;
+  }
+
+  // 音声ステータスをクリア
+  function clearVoiceStatus() {
+    document.getElementById("voiceStatus").textContent = "";
+  }
+
+  // ========== エラーハンドリング ==========
+  // エラー表示
+  function showError(error) {
+    console.error("Error:", error);
+    const grid = document.getElementById("productGrid");
+    grid.innerHTML = createErrorHTML(error.message);
+  }
+
+  // エラーHTMLを生成
+  function createErrorHTML(message) {
+    return `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #666;">
+          <p>エラーが発生しました</p>
+          <p style="font-size: 0.9em; margin-top: 10px;">${message}</p>
+          <button class="button button-primary" onclick="loadProducts()" style="margin-top: 20px;">
+            再読み込み
+          </button>
+        </div>
+      `;
+  }
+
+  // ========== 音声認識関連 ==========
+  const VoiceRecognition = {
+    // エラーメッセージマップ
+    ERROR_MESSAGES: {
+      "no-speech": "音声が検出されませんでした",
+      "audio-capture": "マイクが見つかりません",
+      "not-allowed": "マイクへのアクセスが拒否されました",
+      network: "ネットワークエラーが発生しました",
+    },
+
+    // 音声認識の設定
+    setup: function () {
+      if (!this.isSupported()) {
+        this.handleNotSupported();
+        return;
+      }
+
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+      appState.recognition = new SpeechRecognition();
+
+      this.configureRecognition();
+      this.setupEventHandlers();
+
+      document.getElementById("voiceButton").onclick = () => this.start();
+    },
+
+    // サポートチェック
+    isSupported: function () {
+      return (
+        "webkitSpeechRecognition" in window || "SpeechRecognition" in window
+      );
+    },
+
+    // 非対応時の処理
+    handleNotSupported: function () {
+      document.getElementById("voiceButton").style.display = "none";
+      this.updateStatus("お使いのブラウザは音声認識に対応していません", "#999");
+    },
+
+    // 認識設定
+    configureRecognition: function () {
+      const recognition = appState.recognition;
+      recognition.lang = "ja-JP";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+    },
+
+    // イベントハンドラ設定
+    setupEventHandlers: function () {
+      const recognition = appState.recognition;
+
+      recognition.onstart = () => this.onStart();
+      recognition.onresult = (event) => this.onResult(event);
+      recognition.onend = () => this.onEnd();
+      recognition.onerror = (event) => this.onError(event);
+    },
+
+    // 音声認識開始
+    start: function () {
+      if (appState.recognition) {
+        try {
+          appState.recognition.start();
+        } catch (e) {
+          console.error("Recognition start error:", e);
+          this.updateStatus(
+            "音声認識を開始できませんでした",
+            APP_CONFIG.UI.ERROR_COLOR,
+          );
+        }
+      }
+    },
+
+    // 認識開始時
+    onStart: function () {
+      this.updateButton(
+        "🔴 聞いています...",
+        "linear-gradient(135deg, #f44336 0%, #d32f2f 100%)",
+      );
+      this.updateStatus("話してください", "#2196F3");
+    },
+
+    // 認識結果
+    onResult: function (event) {
+      const transcript = event.results[0][0].transcript;
+      this.updateStatus("認識結果: " + transcript, APP_CONFIG.UI.SUCCESS_COLOR);
+
+      google.script.run
+        .withSuccessHandler(handleVoiceOrderResult)
+        .withFailureHandler(handleVoiceOrderError)
+        .processVoiceOrder(transcript);
+    },
+
+    // 認識終了時
+    onEnd: function () {
+      this.resetButton();
+    },
+
+    // エラー時
+    onError: function (event) {
+      console.error("Speech recognition error:", event.error);
+      const errorMessage =
+        this.ERROR_MESSAGES[event.error] || "エラーが発生しました";
+      this.updateStatus(errorMessage, APP_CONFIG.UI.ERROR_COLOR);
+      this.resetButton();
+    },
+
+    // ボタン更新
+    updateButton: function (text, background) {
+      const button = document.getElementById("voiceButton");
+      button.innerHTML = text;
+      button.style.background = background;
+    },
+
+    // ボタンリセット
+    resetButton: function () {
+      this.updateButton(
+        "🎤 音声で注文",
+        "linear-gradient(135deg, #2196F3 0%, #1976D2 100%)",
+      );
+    },
+
+    // ステータス更新
+    updateStatus: function (message, color) {
+      const status = document.getElementById("voiceStatus");
+      status.textContent = message;
+      status.style.color = color;
+    },
+  };
+
+  // 音声認識の設定（互換性のため残す）
+  function setupVoiceRecognition() {
+    VoiceRecognition.setup();
+  }
+
+  // 音声注文の結果を処理
+  function handleVoiceOrderResult(result) {
+    if (result.success && result.items && result.items.length > 0) {
+      processVoiceOrderItems(result.items);
+      VoiceRecognition.updateStatus(
+        result.message,
+        APP_CONFIG.UI.SUCCESS_COLOR,
+      );
+    } else {
+      VoiceRecognition.updateStatus(
+        result.message || "商品が見つかりませんでした",
+        APP_CONFIG.UI.WARNING_COLOR,
+      );
+    }
+  }
+
+  // 音声注文アイテムを処理
+  function processVoiceOrderItems(items) {
+    items.forEach((item) => {
+      const product = appState.products.find(
+        (p) => p["商品ID"] === item["商品ID"],
+      );
+      if (product) {
+        addVoiceOrderItem(product, item["数量"]);
+      }
+    });
+    updateCartDisplay();
+  }
+
+  // 音声注文アイテムを追加
+  function addVoiceOrderItem(product, quantity) {
+    const existingItem = appState.cart.find(
+      (item) => item["商品ID"] === product["商品ID"],
+    );
+
+    if (existingItem) {
+      const newQuantity = existingItem["数量"] + quantity;
+      if (newQuantity <= product["現在庫"]) {
+        existingItem["数量"] = newQuantity;
+      } else {
+        showStockWarning(product["商品名"], product["現在庫"]);
+      }
+    } else {
+      if (quantity <= product["現在庫"]) {
+        appState.cart.push({
+          ...product,
+          数量: quantity,
+        });
+      } else {
+        showStockWarning(product["商品名"], product["現在庫"]);
+      }
+    }
+  }
+
+  // 在庫不足警告を表示
+  function showStockWarning(productName, stock) {
+    alert(`${productName}の在庫が不足しています（残り${stock}個）`);
+  }
+
+  // 音声注文のエラー処理
+  function handleVoiceOrderError(error) {
+    console.error("Voice order error:", error);
+    VoiceRecognition.updateStatus(
+      "エラー: " + error.message,
+      APP_CONFIG.UI.ERROR_COLOR,
+    );
+  }
+
+  // ========== 在庫アラート機能 ==========
+
+  // 在庫アラートをチェック
+  function checkInventoryAlerts() {
+    google.script.run
+      .withSuccessHandler(displayAlerts)
+      .withFailureHandler((error) => console.error("Alert check error:", error))
+      .getInventoryAlerts();
+  }
+
+  // アラートを表示
+  function displayAlerts(alerts) {
+    const alertBar = document.getElementById("alertBar");
+    const alertSummary = document.getElementById("alertSummary");
+
+    if (!alerts || alerts.length === 0) {
+      alertBar.style.display = "none";
+      return;
+    }
+
+    // アラートレベル別にカウント
+    const criticalCount = alerts.filter(
+      (a) => a.level === "critical" || a.level === "sold_out",
+    ).length;
+    const warningCount = alerts.filter((a) => a.level === "warning").length;
+
+    // サマリーテキスト作成
+    const summaryParts = [];
+    if (criticalCount > 0) {
+      summaryParts.push(`危険: ${criticalCount}件`);
+    }
+    if (warningCount > 0) {
+      summaryParts.push(`注意: ${warningCount}件`);
+    }
+
+    alertSummary.textContent = summaryParts.join(" / ");
+
+    // アラートバーのスタイルを調整
+    if (criticalCount > 0) {
+      alertBar.style.background = "#f8d7da";
+      alertBar.style.borderColor = "#dc3545";
+    } else {
+      alertBar.style.background = "#fff3cd";
+      alertBar.style.borderColor = "#ffc107";
+    }
+
+    alertBar.style.display = "block";
+
+    // グローバル変数に保存（詳細表示用）
+    window.currentAlerts = alerts;
+  }
+
+  // アラート詳細を表示
+  function showAlertDetails() {
+    if (!window.currentAlerts || window.currentAlerts.length === 0) {
+      return;
+    }
+
+    const modal = document.getElementById("customModal");
+    const modalContent = document.getElementById("modalContent");
+
+    // アラート詳細のHTML作成
+    let detailsHtml = `
+        <div style="padding: 10px;">
+          <h2 style="margin-bottom: 20px;">📦 在庫アラート詳細</h2>
+          <div style="max-height: 400px; overflow-y: auto;">
+      `;
+
+    // 売り切れ・危険在庫を先に表示
+    const sortedAlerts = [...window.currentAlerts].sort((a, b) => {
+      const levelOrder = { sold_out: 0, critical: 1, warning: 2 };
+      return (levelOrder[a.level] || 3) - (levelOrder[b.level] || 3);
+    });
+
+    sortedAlerts.forEach((alert) => {
+      const levelColor =
+        {
+          sold_out: "#dc3545",
+          critical: "#fd7e14",
+          warning: "#ffc107",
+        }[alert.level] || "#6c757d";
+
+      const levelText =
+        {
+          sold_out: "売り切れ",
+          critical: "危険",
+          warning: "注意",
+        }[alert.level] || "情報";
+
+      detailsHtml += `
+          <div style="border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+              <div>
+                <h4 style="margin: 0 0 10px 0;">
+                  ${alert.productName}
+                  <span style="background: ${levelColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8em; margin-left: 10px;">
+                    ${levelText}
+                  </span>
+                </h4>
+                <div style="color: #666; font-size: 0.9em;">
+                  <div>現在庫: <strong>${alert.currentStock}個</strong></div>
+                  <div>売上速度: ${alert.salesRate}個/時間</div>
+                  ${alert.timeToSoldOut ? `<div>売り切れ予測: <strong style="color: ${levelColor};">${alert.timeToSoldOut}</strong></div>` : ""}
+                  ${alert.reorderQuantity > 0 ? `<div>推奨発注数: ${alert.reorderQuantity}個</div>` : ""}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+    });
+
+    detailsHtml += `
+          </div>
+          <div style="margin-top: 20px; text-align: center;">
+            <button onclick="showReorderList()" class="button button-primary" style="margin-right: 10px;">
+              📋 発注リスト作成
+            </button>
+            <button onclick="closeModal()" class="button button-secondary">
+              閉じる
+            </button>
+          </div>
+        </div>
+      `;
+
+    modalContent.innerHTML = detailsHtml;
+    modal.style.display = "flex";
+  }
+
+  // 発注リストを表示
+  function showReorderList() {
+    google.script.run
+      .withSuccessHandler(displayReorderList)
+      .withFailureHandler((error) =>
+        console.error("Reorder list error:", error),
+      )
+      .getReorderList();
+  }
+
+  // 発注リストの表示
+  function displayReorderList(reorderList) {
+    const modal = document.getElementById("customModal");
+    const modalContent = document.getElementById("modalContent");
+
+    if (!reorderList || reorderList.length === 0) {
+      modalContent.innerHTML = `
+          <div style="text-align: center; padding: 40px;">
+            <div style="font-size: 48px; margin-bottom: 20px;">✅</div>
+            <h3>発注の必要はありません</h3>
+            <p style="color: #666; margin-top: 10px;">在庫は適切なレベルです</p>
+            <button onclick="closeModal()" class="button button-primary" style="margin-top: 20px;">
+              OK
+            </button>
+          </div>
+        `;
+      return;
+    }
+
+    let listHtml = `
+        <div style="padding: 10px;">
+          <h2 style="margin-bottom: 20px;">📋 自動発注リスト</h2>
+          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="border-bottom: 2px solid #dee2e6;">
+                  <th style="text-align: left; padding: 10px;">商品名</th>
+                  <th style="text-align: center; padding: 10px;">現在庫</th>
+                  <th style="text-align: center; padding: 10px;">推奨数</th>
+                  <th style="text-align: center; padding: 10px;">緊急度</th>
+                </tr>
+              </thead>
+              <tbody>
+      `;
+
+    reorderList.forEach((item) => {
+      const urgencyColor = item.urgency === "緊急" ? "#dc3545" : "#fd7e14";
+      listHtml += `
+          <tr style="border-bottom: 1px solid #dee2e6;">
+            <td style="padding: 10px;">${item.productName}</td>
+            <td style="text-align: center; padding: 10px;">${item.currentStock}個</td>
+            <td style="text-align: center; padding: 10px;"><strong>${item.recommendedQuantity}個</strong></td>
+            <td style="text-align: center; padding: 10px;">
+              <span style="color: ${urgencyColor}; font-weight: bold;">${item.urgency}</span>
+            </td>
+          </tr>
+        `;
+    });
+
+    listHtml += `
+              </tbody>
+            </table>
+          </div>
+          <div style="text-align: center;">
+            <button onclick="copyReorderList()" class="button button-primary" style="margin-right: 10px;">
+              📋 リストをコピー
+            </button>
+            <button onclick="closeModal()" class="button button-secondary">
+              閉じる
+            </button>
+          </div>
+        </div>
+      `;
+
+    modalContent.innerHTML = listHtml;
+
+    // グローバル変数に保存（コピー用）
+    window.currentReorderList = reorderList;
+  }
+
+  // 発注リストをクリップボードにコピー
+  function copyReorderList() {
+    if (!window.currentReorderList) return;
+
+    let text = "【発注リスト】\n\n";
+    window.currentReorderList.forEach((item) => {
+      text += `${item.productName}: ${item.recommendedQuantity}個 (現在庫: ${item.currentStock}個) [${item.urgency}]\n`;
+    });
+
+    // クリップボードにコピー
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        alert("発注リストをクリップボードにコピーしました");
+      })
+      .catch((err) => {
+        console.error("Copy failed:", err);
+        alert("コピーに失敗しました");
+      });
+  }
+</script>

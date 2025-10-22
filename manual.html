@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🎪 文化祭スマートPOS｜運用マニュアル</title>
+    <style>
+      :root {
+        --bg: #f6f8fb;
+        --card: #ffffff;
+        --border: #d8e1ef;
+        --text: #1f2933;
+        --muted: #52606d;
+        --primary: #3451b2;
+        --accent: #2c8df4;
+        --success: #0f9d58;
+        --warning: #f9ab00;
+        --danger: #d93025;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic",
+          "Meiryo", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.7;
+      }
+
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      header {
+        background: var(--card);
+        border-bottom: 1px solid var(--border);
+        padding: 16px 32px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+
+      .brand {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .brand span {
+        font-size: 2rem;
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--primary);
+        padding: 8px 16px;
+        border-radius: 999px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+
+      .btn.primary {
+        background: var(--primary);
+        color: #fff;
+        border-color: var(--primary);
+      }
+
+      .btn:hover {
+        background: rgba(52, 81, 178, 0.08);
+      }
+
+      .btn.primary:hover {
+        background: #273d86;
+      }
+
+      .layout {
+        display: flex;
+        min-height: calc(100vh - 72px);
+      }
+
+      .sidebar {
+        width: 280px;
+        background: var(--card);
+        border-right: 1px solid var(--border);
+        padding: 32px 24px;
+        position: sticky;
+        top: 72px;
+        height: calc(100vh - 72px);
+        overflow-y: auto;
+      }
+
+      .sidebar-header {
+        margin-bottom: 24px;
+      }
+
+      .sidebar-header h1 {
+        font-size: 1.3rem;
+        margin-bottom: 6px;
+      }
+
+      .sidebar-header p {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .nav-group + .nav-group {
+        margin-top: 24px;
+      }
+
+      .nav-title {
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        font-weight: 700;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+      }
+
+      .nav-link {
+        display: block;
+        padding: 8px 12px;
+        margin-bottom: 6px;
+        border-radius: 8px;
+        color: var(--muted);
+        font-size: 0.95rem;
+        transition: background 0.2s ease, color 0.2s ease;
+      }
+
+      .nav-link span {
+        margin-right: 8px;
+      }
+
+      .nav-link:hover,
+      .nav-link.active {
+        background: rgba(52, 81, 178, 0.12);
+        color: var(--primary);
+        font-weight: 600;
+      }
+
+      .content {
+        flex: 1;
+        padding: 48px 56px 96px;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+
+      section {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 36px;
+        margin-bottom: 32px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+      }
+
+      section h2 {
+        font-size: 1.6rem;
+        margin-bottom: 16px;
+        color: var(--primary);
+      }
+
+      section h3 {
+        font-size: 1.2rem;
+        margin: 24px 0 12px;
+        color: var(--text);
+      }
+
+      section p {
+        color: var(--muted);
+        font-size: 1rem;
+        margin-bottom: 12px;
+      }
+
+      ul,
+      ol {
+        margin-left: 20px;
+        color: var(--muted);
+      }
+
+      li + li {
+        margin-top: 6px;
+      }
+
+      .info-box,
+      .success-box,
+      .warning-box {
+        border-radius: 12px;
+        padding: 16px 18px;
+        margin: 20px 0;
+      }
+
+      .info-box {
+        background: rgba(44, 141, 244, 0.1);
+        border: 1px solid rgba(44, 141, 244, 0.3);
+      }
+
+      .success-box {
+        background: rgba(15, 157, 88, 0.1);
+        border: 1px solid rgba(15, 157, 88, 0.3);
+      }
+
+      .warning-box {
+        background: rgba(249, 171, 0, 0.12);
+        border: 1px solid rgba(249, 171, 0, 0.35);
+      }
+
+      .feature-grid,
+      .menu-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+
+      .card,
+      .menu-card {
+        background: rgba(246, 248, 251, 0.6);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 20px;
+        height: 100%;
+      }
+
+      .card h4,
+      .menu-card h4 {
+        font-size: 1.05rem;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--primary);
+      }
+
+      .tag {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        background: rgba(52, 81, 178, 0.14);
+        color: var(--primary);
+        margin-right: 8px;
+      }
+
+      .checklist {
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 16px;
+      }
+
+      .checklist h4 {
+        font-size: 1rem;
+        margin-bottom: 12px;
+      }
+
+      .checklist-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+        color: var(--muted);
+      }
+
+      .checklist-item input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+      }
+
+      pre {
+        background: rgba(15, 23, 42, 0.85);
+        color: #e5edff;
+        padding: 14px 18px;
+        border-radius: 12px;
+        overflow-x: auto;
+        font-size: 0.9rem;
+        margin-top: 12px;
+      }
+
+      code {
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      }
+
+      .mobile-toggle {
+        display: none;
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 120;
+        background: var(--primary);
+        color: #fff;
+        padding: 14px 18px;
+        border-radius: 999px;
+        border: none;
+        font-size: 0.95rem;
+        box-shadow: 0 12px 24px rgba(52, 81, 178, 0.35);
+      }
+
+      @media (max-width: 960px) {
+        header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 12px;
+        }
+
+        .layout {
+          flex-direction: column;
+        }
+
+        .sidebar {
+          position: fixed;
+          top: 72px;
+          left: -100%;
+          height: calc(100vh - 72px);
+          width: 260px;
+          transition: left 0.25s ease;
+          box-shadow: 0 12px 24px rgba(15, 23, 42, 0.2);
+        }
+
+        .sidebar.open {
+          left: 0;
+        }
+
+        .content {
+          padding: 28px 20px 80px;
+        }
+
+        section {
+          padding: 28px;
+        }
+
+        .mobile-toggle {
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand"><span>🎪</span>文化祭スマートPOS 運用マニュアル</div>
+      <div class="actions">
+        <a class="btn" href="?page=curriculum">カリキュラムを見る</a>
+        <button class="btn primary" onclick="window.print()">PDFとして保存</button>
+      </div>
+    </header>
+    <button class="mobile-toggle" onclick="toggleSidebar()">メニュー</button>
+    <div class="layout">
+      <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <h1>操作ガイド</h1>
+          <p>セットアップから運用までこの順番で進めてください。</p>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">はじめに</p>
+          <a class="nav-link active" href="#overview"><span>👋</span>概要</a>
+          <a class="nav-link" href="#quickstart"><span>🚀</span>クイックスタート</a>
+          <a class="nav-link" href="#features"><span>✨</span>主な特徴</a>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">セットアップ</p>
+          <a class="nav-link" href="#template"><span>📄</span>テンプレートをコピー</a>
+          <a class="nav-link" href="#initial-setup"><span>🛠</span>初期設定の実行</a>
+          <a class="nav-link" href="#sheet-guide"><span>📑</span>シート構成</a>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">運用準備</p>
+          <a class="nav-link" href="#webapp"><span>🌐</span>Webアプリ連携</a>
+          <a class="nav-link" href="#integration"><span>🔑</span>Gemini連携</a>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">操作ガイド</p>
+          <a class="nav-link" href="#menu-reference"><span>📋</span>メニュー辞典</a>
+          <a class="nav-link" href="#pos-usage"><span>🛒</span>POS画面の操作</a>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">運用フロー</p>
+          <a class="nav-link" href="#daily-ops"><span>📆</span>日次オペレーション</a>
+          <a class="nav-link" href="#monthly-ops"><span>📅</span>月次・分析</a>
+          <a class="nav-link" href="#automation"><span>⚙️</span>自動化とトリガー</a>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">サポート</p>
+          <a class="nav-link" href="#troubleshooting"><span>🆘</span>トラブルシュート</a>
+          <a class="nav-link" href="#dev-notes"><span>🛠</span>開発者向けメモ</a>
+        </div>
+      </nav>
+      <main class="content">
+        <section id="overview">
+          <h2>👋 文化祭スマートPOSとは</h2>
+          <p>
+            Google スプレッドシートと Apps Script をベースにした模擬店向け POS
+            システムです。シートのメニューから初期設定・ダミーデータ投入・日次/週次処理を呼び出し、Web アプリでは販売登録や在庫確認が行えます。
+          </p>
+          <div class="info-box">
+            <strong>設計のポイント</strong>
+            <ul>
+              <li>セットアップをメニューに集約し、操作ミスを防止</li>
+              <li>在庫と売上は常にシートへ記録し、履歴を残す</li>
+              <li>Gemini API を利用した音声注文サポートをオプションで提供</li>
+            </ul>
+          </div>
+          <div class="feature-grid">
+            <div class="card">
+              <h4>📊 シート連動</h4>
+              <p>「商品マスタ」「在庫管理」「販売履歴」「ダッシュボード」など必要なタブを自動生成し、以降の管理をスムーズにします。</p>
+            </div>
+            <div class="card">
+              <h4>🛒 Web POS</h4>
+              <p>カート操作、決済種別の切り替え、在庫警告表示など、1枚の画面で販売フローが完結します。</p>
+            </div>
+            <div class="card">
+              <h4>📅 業務メニュー</h4>
+              <p>日次集計・月次分析・在庫アラート・PDF 出力・締め処理など、日常業務をメニューから実行できます。</p>
+            </div>
+          </div>
+        </section>
+        <section id="quickstart">
+          <h2>🚀 クイックスタート</h2>
+          <p>初めて触る場合は、次の 4 ステップで体験版をセットアップします。</p>
+          <ol>
+            <li>テンプレートスプレッドシートをコピーして自分のドライブに保存</li>
+            <li>シートを開き「🎪 POSシステム設定 → 📋 初期設定（シート作成）」を実行</li>
+            <li>テスト確認が必要なら「🎪 POSシステム設定 → 🎯 ダミーデータ生成（テスト用）」を実行</li>
+            <li>Web アプリ URL を登録し「🚀 Webアプリを開く」で POS 画面を確認</li>
+          </ol>
+          <div class="checklist">
+            <h4>完了チェック</h4>
+            <div class="checklist-item">
+              <input id="qs-copy" type="checkbox" />
+              <label for="qs-copy">テンプレートをコピーした</label>
+            </div>
+            <div class="checklist-item">
+              <input id="qs-init" type="checkbox" />
+              <label for="qs-init">初期設定を実行した</label>
+            </div>
+            <div class="checklist-item">
+              <input id="qs-dummy" type="checkbox" />
+              <label for="qs-dummy">ダミーデータを投入した（任意）</label>
+            </div>
+            <div class="checklist-item">
+              <input id="qs-webapp" type="checkbox" />
+              <label for="qs-webapp">Web アプリを開けた</label>
+            </div>
+          </div>
+        </section>
+        <section id="features">
+          <h2>✨ 主な特徴</h2>
+          <div class="feature-grid">
+            <div class="card">
+              <h4>🧭 カスタムメニュー</h4>
+              <p>Apps Script の <code>onOpen</code> が自動でメニューを追加し、運営担当がコードを触らずに全操作を呼び出せます。</p>
+            </div>
+            <div class="card">
+              <h4>🔄 在庫連動</h4>
+              <p>販売登録時に在庫が減算され、閾値を下回るとアラートと発注リストを生成します。</p>
+            </div>
+            <div class="card">
+              <h4>🎤 AI 補助</h4>
+              <p>Gemini API キーを登録すれば、音声注文や説明文生成などのサポート機能が利用できます。</p>
+            </div>
+            <div class="card">
+              <h4>📈 ダッシュボード</h4>
+              <p>トリガーまたは手動更新で KPI を再計算し、売上速報やカテゴリ別成績を把握できます。</p>
+            </div>
+          </div>
+        </section>
+        <section id="template">
+          <h2>📄 テンプレートをコピーする</h2>
+          <p>
+            運用のスタート地点は公式テンプレートのコピーです。以下のリンクから自分のドライブへ複製し、共有設定を整えます。
+          </p>
+          <div class="info-box">
+            <strong>テンプレート URL</strong>
+            <p><a href="https://docs.google.com/spreadsheets/d/1uV9rM0tl7rWimjAZThQIgJ1J7DdlsTZTFXPMUph4XOQ/copy" target="_blank">https://docs.google.com/spreadsheets/d/1uV9.../copy</a></p>
+          </div>
+          <ol>
+            <li>リンクを開き「コピーを作成」をクリック</li>
+            <li>保存先フォルダとファイル名を決める（例: <code>文化祭POS_2025</code>）</li>
+            <li>運用メンバー全員に「編集者」権限を付与する</li>
+          </ol>
+          <div class="warning-box">
+            <strong>注意:</strong> テンプレートを直接編集すると他チームと競合します。必ずコピーを作成してから作業してください。
+          </div>
+        </section>
+        <section id="initial-setup">
+          <h2>🛠 初期設定の実行</h2>
+          <p>
+            コピースプレッドシートを開くと「🎪 POSシステム設定」メニューが表示されます。最初に以下の順序で実行し、必要なタブとサンプルデータを整えます。
+          </p>
+          <ol>
+            <li><strong>📋 初期設定（シート作成）</strong> — 必須タブと初期値を生成。</li>
+            <li><strong>🎯 ダミーデータ生成（テスト用）</strong> — デモ用の商品・在庫・販売記録を投入（本番前にクリア）。</li>
+            <li><strong>🔑 Gemini APIキー設定</strong> — オプション。後述の手順で API キーを登録。</li>
+            <li><strong>🌐 WebアプリURL設定</strong> — デプロイ済み URL を入力し、メニューから開けるようにします。</li>
+          </ol>
+          <div class="success-box">
+            <strong>ヒント:</strong> メニューが表示されない場合はシートを再読み込みするか、Apps Script エディタで <code>onOpen()</code> を実行してください。
+          </div>
+        </section>
+        <section id="sheet-guide">
+          <h2>📑 シート構成と役割</h2>
+          <p>初期設定で以下のタブが作成されます。用途と編集ポイントを確認してください。</p>
+          <div class="feature-grid">
+            <div class="card">
+              <h4>📘 商品マスタ</h4>
+              <ul>
+                <li>商品ID・名称・価格・カテゴリ・初期在庫などを登録</li>
+                <li>追加/削除で品目を調整。商品IDは重複禁止</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h4>📦 在庫管理</h4>
+              <ul>
+                <li>商品マスタと連動して現在庫を管理</li>
+                <li>初期補充はメニュー「在庫準備：初期在庫へ補充」を利用</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h4>🧾 販売履歴</h4>
+              <ul>
+                <li>Web POS からの取引が時系列で追記</li>
+                <li>締め処理でアーカイブまたは指定日を別シートに切り出し</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h4>⚙️ 設定</h4>
+              <ul>
+                <li><code>shop_name</code> や <code>sales_target</code> など店舗情報を管理</li>
+                <li>QR コード URL や営業開始/終了時刻もここで調整</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h4>📈 ダッシュボード</h4>
+              <ul>
+                <li>売上総額や商品別ランキングを表示</li>
+                <li>トリガーまたは手動更新で指標を再計算</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h4>🚨 エラーログ</h4>
+              <ul>
+                <li>スクリプト内で例外が発生した際に自動追記</li>
+                <li>問題発生時は最新行を確認し、再現手順をメモ</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+        <section id="webapp">
+          <h2>🌐 Webアプリ連携</h2>
+          <p>Apps Script を Web アプリとしてデプロイし、シートメニューから開けるように設定します。</p>
+          <ol>
+            <li>Apps Script 画面で <strong>デプロイ &gt; 新しいデプロイ</strong> を選択</li>
+            <li>種類を「ウェブアプリ」、実行するユーザーを「自分」、アクセス権を運用方針に合わせて設定</li>
+            <li>デプロイ後に表示される <strong>ウェブアプリ URL</strong> をコピー</li>
+            <li>スプレッドシートへ戻り「🎪 POSシステム設定 → 🌐 WebアプリURL設定」で URL を保存</li>
+            <li>同メニューの「🚀 Webアプリを開く」で POS 画面が新しいタブに表示されることを確認</li>
+          </ol>
+          <div class="info-box">
+            <strong>メモ:</strong> URL が自動取得できない場合は、Web アプリを再デプロイした上で再設定してください。
+          </div>
+        </section>
+        <section id="integration">
+          <h2>🔑 Gemini 連携（任意）</h2>
+          <p>音声注文や AI 補助機能を利用する場合は Gemini API キーを登録します。</p>
+          <ol>
+            <li><a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a> で API キーを取得</li>
+            <li>シートで「🎪 POSシステム設定 → 🔑 Gemini APIキー設定」を実行</li>
+            <li>ダイアログに取得したキーを貼り付けて保存（スクリプトプロパティに保管されます）</li>
+            <li>キーを更新する場合は同じメニューから再登録してください</li>
+          </ol>
+          <div class="warning-box">
+            <strong>注意:</strong> API キーは共有しないでください。利用量に応じて課金が発生する場合があります。
+          </div>
+        </section>
+        <section id="menu-reference">
+          <h2>📋 メニュー辞典</h2>
+          <p>「🎪 POSシステム設定」メニュー内の主な機能と役割をまとめました。</p>
+          <div class="menu-grid">
+            <div class="menu-card">
+              <h4>🧱 基本設定</h4>
+              <ul>
+                <li>📋 初期設定（シート作成）— 必須タブ生成</li>
+                <li>🎯 ダミーデータ生成（テスト用）— サンプル投入</li>
+                <li>🔑 Gemini APIキー設定 — 音声・AI 機能を有効化</li>
+                <li>🌐 WebアプリURL設定／🚀 Webアプリを開く — POS 画面にアクセス</li>
+              </ul>
+            </div>
+            <div class="menu-card">
+              <h4>🗓 日次作業</h4>
+              <ul>
+                <li>📊 日次集計（本日／任意日）— 売上サマリーシート生成</li>
+                <li>🗃 販売履歴アーカイブ（本日／任意日）— 履歴を別シートに退避</li>
+                <li>🔁 在庫準備：初期在庫へ補充 — 初期在庫値でリセット</li>
+                <li>📄 日次レポートPDF（本日）— PDF 書き出し</li>
+                <li>📊+🗃+🔁 締め処理 — 集計・アーカイブ・補充を一括実行</li>
+              </ul>
+            </div>
+            <div class="menu-card">
+              <h4>📅 月次・分析</h4>
+              <ul>
+                <li>📅 月次サマリー（今月）— 月次集計タブを生成</li>
+                <li>📅 月次サマリー（全期間再構築）— 過去分を再計算</li>
+                <li>📊 カテゴリ別月次（全期間）— カテゴリ別比較シートを作成</li>
+              </ul>
+            </div>
+            <div class="menu-card">
+              <h4>📦 在庫管理</h4>
+              <ul>
+                <li>⚠️ 在庫アラートチェック — 閾値下回りを通知</li>
+                <li>📋 発注リスト生成 — 推奨発注量を含む新規シートを作成</li>
+              </ul>
+            </div>
+            <div class="menu-card">
+              <h4>📚 ドキュメント</h4>
+              <ul>
+                <li>📖 開発マニュアル — この画面を表示</li>
+                <li>🎓 カリキュラム — 学習コンテンツを別タブで開く</li>
+              </ul>
+            </div>
+            <div class="menu-card">
+              <h4>🛠 ユーティリティ</h4>
+              <ul>
+                <li>📊 ダッシュボード更新 — KPI を再計算</li>
+                <li>⚙️ トリガー設定 — 5 分ごとのダッシュボード更新トリガーを再作成</li>
+                <li>🗑️ データ全削除（注意）— 全シートのデータをクリア（実行前にバックアップ必須）</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+        <section id="pos-usage">
+          <h2>🛒 Web POS 画面の操作</h2>
+          <ol>
+            <li>メニューから「🚀 Webアプリを開く」を実行し、POS 画面を表示</li>
+            <li>商品タイルをタップしてカートに追加（数量はタイルを繰り返しタップ）</li>
+            <li>右側のカートで数量調整・削除が可能。「カートをクリア」で全削除</li>
+            <li>決済種別に応じて <strong>💴 現金決済</strong> または <strong>📱 QR決済</strong> を選択</li>
+            <li>取引完了後は「販売履歴」に記録され、「在庫管理」が自動減算</li>
+            <li>在庫が閾値を下回ると画面上部にアラートバーが表示され、詳細で不足商品を確認</li>
+            <li>「🎤 音声で注文」ボタンを押下すると Gemini が音声解析を行い、候補商品をカートへ提案（API キー設定時）</li>
+          </ol>
+        </section>
+        <section id="daily-ops">
+          <h2>📆 日次オペレーション</h2>
+          <div class="feature-grid">
+            <div class="card">
+              <h4>🌅 開店準備</h4>
+              <ul>
+                <li>⚙️ トリガーの状態を確認（必要なら再設定）</li>
+                <li>⚠️ 在庫アラートチェック で不足在庫を把握</li>
+                <li>🔁 在庫準備：初期在庫へ補充 を実行し棚卸しを揃える</li>
+                <li>📊 ダッシュボード更新 で KPI を最新化</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h4>🕛 営業中</h4>
+              <ul>
+                <li>POS 画面で販売登録を継続</li>
+                <li>必要に応じて 📋 発注リスト生成 を実行し補充計画を検討</li>
+                <li>在庫アラートが増えたら担当へ連絡</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h4>🌙 閉店処理</h4>
+              <ul>
+                <li>📊+🗃+🔁 締め処理 で集計・アーカイブ・在庫リセットを一括実行</li>
+                <li>必要に応じて 📄 日次レポートPDF（本日） を出力し共有</li>
+                <li>翌日の準備として初期在庫値を確認</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+        <section id="monthly-ops">
+          <h2>📅 月次・分析レポート</h2>
+          <p>イベント期間の振り返りや次回計画には月次分析メニューを活用します。</p>
+          <ol>
+            <li><strong>📅 月次サマリー（今月）</strong> — 現在月の指標をサマリータブへ出力</li>
+            <li><strong>📊 カテゴリ別月次（全期間）</strong> — カテゴリごとの売上推移を比較</li>
+            <li><strong>📅 月次サマリー（全期間再構築）</strong> — 過去分を含めて集計し直す（長期運用時に利用）</li>
+          </ol>
+          <div class="info-box">
+            <strong>ポイント:</strong> 月次サマリーやカテゴリ別集計はシートとして保存されるため、加筆メモやハイライトをしても上書きされません。
+          </div>
+        </section>
+        <section id="automation">
+          <h2>⚙️ 自動化とトリガー</h2>
+          <p>継続的な運用では Apps Script トリガーを使った自動更新が便利です。</p>
+          <ul>
+            <li><strong>⚙️ トリガー設定</strong> — 既存トリガーを整理し、<code>updateDashboard</code> を5分間隔で再作成します。</li>
+            <li><strong>updateDashboard</strong> — ダッシュボードの KPI を最新の販売データで計算します。</li>
+            <li><strong>runInventoryAlertCheck</strong> — 在庫アラートを定期的にチェックしたい場合は、時間主導型トリガーを手動で追加してください。</li>
+          </ul>
+          <div class="warning-box">
+            <strong>権限エラーについて</strong>
+            <p>トリガー実行者のアクセスが失効すると自動化が停止します。Apps Script の「トリガー」画面で定期的に状態を確認してください。</p>
+          </div>
+        </section>
+        <section id="troubleshooting">
+          <h2>🆘 トラブルシュート</h2>
+          <div class="feature-grid">
+            <div class="card">
+              <h4>🚫 メニューが出ない</h4>
+              <ul>
+                <li>シートを再読み込みする</li>
+                <li>Apps Script から <code>onOpen()</code> を実行</li>
+                <li>ブラウザのキャッシュをクリアして再ログイン</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h4>🌐 Webアプリが開かない</h4>
+              <ul>
+                <li>🌐 WebアプリURL設定 を再実行し、最新のデプロイ URL を登録</li>
+                <li>ウェブアプリのアクセス権（全員/ドメイン内）を再確認</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h4>🔑 Gemini が反応しない</h4>
+              <ul>
+                <li>API キーが有効期限切れになっていないか確認</li>
+                <li>🔑 Gemini APIキー設定 から再登録</li>
+                <li>Quota 超過の場合は時間を置いて再試行</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h4>🗑️ データリセットが必要</h4>
+              <ul>
+                <li>🗑️ データ全削除 を実行する前にバックアップを取得</li>
+                <li>必要シートのみクリアする場合は手作業で対応</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+        <section id="dev-notes">
+          <h2>🛠 開発者向けメモ</h2>
+          <p>ローカル開発や更新作業で役立つ基本コマンドと注意点です。</p>
+          <pre><code># 認証と同期
+clasp login
+clasp pull
+
+# 変更を反映
+clasp push
+
+# 任意の関数をローカルから実行（例: initializeSpreadsheet）
+clasp run initializeSpreadsheet
+</code></pre>
+          <ul>
+            <li><strong>構成ファイル</strong>: Apps Script の設定は <code>appsscript.json</code>、コードは <code>code.js</code> に集約されています。</li>
+            <li><strong>スタイル</strong>: HTML テンプレートは <code>curriculum.html</code>、<code>manual.html</code>、<code>script.html</code> で管理し、共通スタイルは <code>style.css.html</code> に配置しています。</li>
+            <li><strong>スコープ変更</strong>: 新しいサービスを追加した場合は <code>appsscript.json</code> のスコープを更新し、レビュー時に共有してください。</li>
+          </ul>
+          <div class="info-box">
+            <strong>次のステップ</strong>
+            <p>README の「利用マニュアル」では同じ流れを短くまとめています。紙で配布する場合はそちらを抜粋しても構いません。</p>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script>
+      const sidebar = document.getElementById("sidebar");
+      function toggleSidebar() {
+        sidebar.classList.toggle("open");
+      }
+
+      const navLinks = Array.from(document.querySelectorAll(".nav-link"));
+      const sections = navLinks.map((link) =>
+        document.querySelector(link.getAttribute("href"))
+      );
+
+      const setActiveLink = () => {
+        const scrollPosition = window.scrollY + 120;
+        let currentIndex = 0;
+        sections.forEach((section, index) => {
+          if (section.offsetTop <= scrollPosition) {
+            currentIndex = index;
+          }
+        });
+        navLinks.forEach((link, index) => {
+          if (index === currentIndex) {
+            link.classList.add("active");
+          } else {
+            link.classList.remove("active");
+          }
+        });
+      };
+
+      window.addEventListener("scroll", setActiveLink);
+      setActiveLink();
+
+      navLinks.forEach((link) => {
+        link.addEventListener("click", () => {
+          sidebar.classList.remove("open");
+        });
+      });
+    </script>
+  </body>
+</html>

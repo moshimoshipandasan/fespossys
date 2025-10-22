@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>情報Ⅰ単元案｜文化祭スマートPOSプロジェクト</title>
+    <style>
+      :root {
+        --bg: #f4f7fb;
+        --card: #ffffff;
+        --border: #d8e1ef;
+        --text: #1f2933;
+        --muted: #4b5563;
+        --primary: #2d4ec6;
+        --accent: #12a6e0;
+        --success: #0f9d58;
+        --warning: #f9ab00;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic",
+          "Meiryo", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.75;
+      }
+
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: var(--card);
+        border-bottom: 1px solid var(--border);
+        padding: 16px 32px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--primary);
+      }
+
+      .brand span {
+        font-size: 1.8rem;
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--primary);
+        padding: 8px 16px;
+        border-radius: 999px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn.primary {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+      }
+
+      .btn:hover {
+        background: rgba(45, 78, 198, 0.12);
+      }
+
+      .btn.primary:hover {
+        background: #243fa5;
+      }
+
+      .layout {
+        display: flex;
+        min-height: calc(100vh - 80px);
+      }
+
+      .sidebar {
+        width: 280px;
+        background: var(--card);
+        border-right: 1px solid var(--border);
+        padding: 32px 26px;
+        position: sticky;
+        top: 80px;
+        height: calc(100vh - 80px);
+        overflow-y: auto;
+      }
+
+      .sidebar h1 {
+        font-size: 1.2rem;
+        margin-bottom: 16px;
+        color: var(--primary);
+      }
+
+      .nav-group + .nav-group {
+        margin-top: 28px;
+      }
+
+      .nav-title {
+        font-size: 0.75rem;
+        color: var(--muted);
+        letter-spacing: 0.08em;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+      }
+
+      .nav-link {
+        display: block;
+        padding: 8px 10px;
+        margin-bottom: 6px;
+        border-radius: 8px;
+        color: var(--muted);
+        font-size: 0.95rem;
+        transition: background 0.2s ease, color 0.2s ease;
+      }
+
+      .nav-link span {
+        margin-right: 8px;
+      }
+
+      .nav-link:hover,
+      .nav-link.active {
+        background: rgba(45, 78, 198, 0.14);
+        color: var(--primary);
+        font-weight: 600;
+      }
+
+      main {
+        flex: 1;
+        padding: 48px 56px 96px;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+
+      section {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 36px;
+        margin-bottom: 32px;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+      }
+
+      section h2 {
+        font-size: 1.6rem;
+        margin-bottom: 18px;
+        color: var(--primary);
+      }
+
+      section h3 {
+        font-size: 1.1rem;
+        margin: 20px 0 12px;
+      }
+
+      p {
+        margin-bottom: 14px;
+        color: var(--muted);
+        font-size: 1rem;
+      }
+
+      ul,
+      ol {
+        margin-left: 20px;
+        color: var(--muted);
+      }
+
+      li + li {
+        margin-top: 6px;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 999px;
+        background: rgba(45, 78, 198, 0.12);
+        color: var(--primary);
+        font-size: 0.78rem;
+        margin-right: 8px;
+        font-weight: 700;
+      }
+
+      .info-box,
+      .attention-box,
+      .success-box {
+        border-radius: 14px;
+        padding: 16px 18px;
+        margin: 18px 0;
+      }
+
+      .info-box {
+        background: rgba(18, 166, 224, 0.12);
+        border: 1px solid rgba(18, 166, 224, 0.28);
+      }
+
+      .success-box {
+        background: rgba(15, 157, 88, 0.12);
+        border: 1px solid rgba(15, 157, 88, 0.32);
+      }
+
+      .attention-box {
+        background: rgba(249, 171, 0, 0.14);
+        border: 1px solid rgba(249, 171, 0, 0.35);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px;
+        background: rgba(244, 247, 251, 0.65);
+        height: 100%;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+        border: 1px solid var(--border);
+      }
+
+      th,
+      td {
+        border: 1px solid var(--border);
+        padding: 14px 16px;
+        text-align: left;
+        vertical-align: top;
+        font-size: 0.95rem;
+      }
+
+      th {
+        background: rgba(45, 78, 198, 0.1);
+        color: var(--primary);
+      }
+
+      .timeline {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+
+      .session {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--card);
+        padding: 18px;
+      }
+
+      .session-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .session-number {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--primary);
+      }
+
+      .session-focus {
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+
+      .reference-list {
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+
+      .reference-list li {
+        margin-bottom: 6px;
+      }
+
+      footer {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin: 24px 0 32px;
+      }
+
+      .mobile-toggle {
+        display: none;
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        border-radius: 999px;
+        padding: 14px 18px;
+        font-weight: 600;
+        box-shadow: 0 20px 40px rgba(45, 78, 198, 0.35);
+        cursor: pointer;
+        z-index: 60;
+      }
+
+      @media (max-width: 960px) {
+        header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 12px;
+        }
+
+        .layout {
+          flex-direction: column;
+        }
+
+        .sidebar {
+          position: fixed;
+          left: -100%;
+          top: 80px;
+          height: calc(100vh - 80px);
+          width: 260px;
+          transition: left 0.25s ease;
+          box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
+        }
+
+        .sidebar.open {
+          left: 0;
+        }
+
+        main {
+          padding: 32px 20px 80px;
+        }
+
+        section {
+          padding: 28px;
+        }
+
+        .mobile-toggle {
+          display: inline-flex;
+        }
+      }
+
+      @media print {
+        header,
+        .sidebar,
+        .mobile-toggle,
+        .btn,
+        .actions {
+          display: none !important;
+        }
+        body {
+          background: #fff;
+        }
+        main {
+          padding: 0;
+          max-width: none;
+        }
+        section {
+          box-shadow: none;
+          border-radius: 0;
+          page-break-inside: avoid;
+        }
+        table {
+          page-break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand"><span>📚</span>情報Ⅰカリキュラム | 文化祭スマートPOS</div>
+      <div class="actions">
+        <a class="btn" href="?page=manual">運用マニュアル</a>
+        <button class="btn primary" onclick="window.print()">PDFとして保存</button>
+      </div>
+    </header>
+
+    <button class="mobile-toggle" onclick="toggleSidebar()">目次</button>
+
+    <div class="layout">
+      <aside class="sidebar" id="sidebar">
+        <h1>指導案ナビ</h1>
+        <div class="nav-group">
+          <p class="nav-title">Overview</p>
+          <a class="nav-link active" href="#summary"><span>👀</span>単元概要</a>
+          <a class="nav-link" href="#competency"><span>🎯</span>資質・能力マップ</a>
+          <a class="nav-link" href="#goals"><span>📌</span>単元目標</a>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Learning Flow</p>
+          <a class="nav-link" href="#schedule"><span>🗓</span>授業構成（6時間）</a>
+          <a class="nav-link" href="#project"><span>🛠</span>探究プロジェクト</a>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Evaluation</p>
+          <a class="nav-link" href="#assessment"><span>📝</span>評価規準</a>
+          <a class="nav-link" href="#connections"><span>🔗</span>教科横断・主体的学び</a>
+        </div>
+        <div class="nav-group">
+          <p class="nav-title">Resources</p>
+          <a class="nav-link" href="#resources"><span>📎</span>教材・参照資料</a>
+        </div>
+      </aside>
+
+      <main>
+        <section id="summary">
+          <h2>👀 単元概要</h2>
+          <p>
+            本単元は、文部科学省「高等学校学習指導要領（平成30年告示）解説
+            情報編 情報Ⅰ」<sup>※1</sup>で示された「情報社会の問題解決」「コミュニケーションと情報デザイン」「コンピュータとプログラミング」の3領域を、文化祭模擬店向け POS
+            システム「FesPos」を題材に実践的に学ぶ6時間構成の授業案です。
+          </p>
+          <div class="grid">
+            <div class="card">
+              <h3>単元名</h3>
+              <p>「文化祭を支える情報デザインとプログラミング」</p>
+            </div>
+            <div class="card">
+              <h3>対象</h3>
+              <p>高等学校 情報Ⅰ（普通科／情報系列）</p>
+            </div>
+            <div class="card">
+              <h3>学習時間</h3>
+              <p>50分 × 6時間（プロジェクト型学習）</p>
+            </div>
+            <div class="card">
+              <h3>学習形態</h3>
+              <p>グループワーク・協働探究・発表型</p>
+            </div>
+          </div>
+          <div class="info-box">
+            <strong>題材の特徴</strong>
+            <ul>
+              <li>「祭りを支えるデジタル化」という身近な課題を設定し、情報システムの社会的価値を実感させます。</li>
+              <li>既存システム（FesPos）を活用しながら、分析→設計→実装→テスト→改善の一連を追体験します。</li>
+              <li>スプレッドシート／Apps Script／Web UI を横断的に扱い、情報Ⅰで扱うデータ活用とプログラミングを結び付けます。</li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="competency">
+          <h2>🎯 情報Ⅰの資質・能力との対応</h2>
+          <p>学習指導要領解説に基づき、3つの領域と FesPos 活動の対応を整理しました。</p>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 22%">領域（情報Ⅰ）</th>
+                <th style="width: 33%">学習指導要領の学習内容</th>
+                <th style="width: 45%">FesPos プロジェクトでの学び</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <span class="badge">問題解決</span>情報社会の問題解決
+                </td>
+                <td>
+                  「情報システムを社会の課題解決に活用する過程を理解し、影響を考察する。」<sup>※1 p.116-118</sup>
+                </td>
+                <td>
+                  文化祭の売上管理・在庫課題を洗い出し、POS システムの導入効果や停止時のリスクを議論。データ活用の意義を検討。
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="badge">情報デザイン</span>コミュニケーションと情報デザイン
+                </td>
+                <td>
+                  「利用者の状況や目的に応じて情報を設計し、効果的に提示する。」<sup>※1 p.110-113</sup>
+                </td>
+                <td>
+                  POS 画面やダッシュボードをレビューし、操作性・視認性を評価。改善提案をワイヤーフレームや紙面で表現し共有。
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="badge">プログラミング</span>コンピュータとプログラミング
+                </td>
+                <td>
+                  「プログラムを構造的に捉え、アルゴリズムを設計・実装・検証する。」<sup>※1 p.120-121</sup>
+                </td>
+                <td>
+                  Apps Script の処理構造（販売記録・在庫更新）を読み解き、フローチャート化。テストケース設計とコード改良案の検討を行う。
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="goals">
+          <h2>📌 単元のねらい</h2>
+          <ol>
+            <li>情報システムが社会にもたらす価値と課題を、具体的な事例とデータで説明できる。（知識・理解）</li>
+            <li>利用者視点で要件を整理し、情報の構造と画面デザインを協働で設計できる。（思考・判断・表現）</li>
+            <li>アルゴリズムを図や擬似コードで表現し、テスト観点を踏まえて改善提案を作成・発表できる。（技能・表現）</li>
+          </ol>
+          <div class="attention-box">
+            <strong>評価観点との関係</strong>
+            <p>
+              各学習活動は「情報社会の問題解決の能力」「コミュニケーションへの関心・意欲・態度」「プログラミングの技能」の観点に対応します。評価規準は後述の表を参照してください。
+            </p>
+          </div>
+        </section>
+
+        <section id="schedule">
+          <h2>🗓 授業構成（全6時間）</h2>
+          <p>1コマ50分の想定。授業ごとの主な活動と評価の着眼点を示します。</p>
+          <div class="timeline">
+            <div class="session">
+              <div class="session-header">
+                <span class="session-number">第1時</span>
+                <span class="session-focus">情報システムの価値</span>
+              </div>
+              <h3>文化祭 POS を題材に課題を発見する</h3>
+              <ul>
+                <li>導入：文化祭での課題を想起し、POS 導入の目的を共有</li>
+                <li>活動：FesPos の概要資料を読み、情報の流れを図示</li>
+                <li>振り返り：導入効果と停止時の影響をグループ発表</li>
+              </ul>
+              <p class="session-focus">評価：課題発見と社会的影響の洞察</p>
+            </div>
+
+            <div class="session">
+              <div class="session-header">
+                <span class="session-number">第2時</span>
+                <span class="session-focus">要件定義</span>
+              </div>
+              <h3>利用者視点で機能要件を洗い出す</h3>
+              <ul>
+                <li>既存メニュー（🎪 POSシステム設定）を分析し、現状機能を整理</li>
+                <li>利用者（店長・会計担当・在庫担当）のニーズを付箋で可視化</li>
+                <li>ユーザーストーリーマップを作成し、優先順位を検討</li>
+              </ul>
+              <p class="session-focus">評価：利用者視点の要件整理</p>
+            </div>
+
+            <div class="session">
+              <div class="session-header">
+                <span class="session-number">第3時</span>
+                <span class="session-focus">情報デザイン</span>
+              </div>
+              <h3>UI/UX とセキュリティを考える</h3>
+              <ul>
+                <li>Web POS 画面を分解し、情報設計の工夫をカードにまとめる</li>
+                <li>セキュリティ要件（認証・ログ・権限）を追加する理由を討議</li>
+                <li>改善案をワイヤーフレームや紙面デザインで提示</li>
+              </ul>
+              <p class="session-focus">評価：情報の整理と根拠をもった改善提案</p>
+            </div>
+
+            <div class="session">
+              <div class="session-header">
+                <span class="session-number">第4時</span>
+                <span class="session-focus">アルゴリズム理解</span>
+              </div>
+              <h3>コードリーディングで処理を理解する</h3>
+              <ul>
+                <li><code>processTransaction</code> 等の Apps Script を読み解き処理手順を要約</li>
+                <li>在庫更新ロジックをフローチャートまたは擬似コード化</li>
+                <li>関数間の連携（モジュール構造）をシンプルな図にまとめる</li>
+              </ul>
+              <p class="session-focus">評価：アルゴリズムの可視化・説明力</p>
+            </div>
+
+            <div class="session">
+              <div class="session-header">
+                <span class="session-number">第5時</span>
+                <span class="session-focus">テスト設計</span>
+              </div>
+              <h3>品質保証の視点でテストを計画する</h3>
+              <ul>
+                <li>正常系／異常系のテストケースを作成し、入力・手順・期待結果を整理</li>
+                <li>if 分岐を洗い出し、網羅性（条件網羅）を自己チェック</li>
+                <li>他グループとテストケースを相互レビュー</li>
+              </ul>
+              <p class="session-focus">評価：論理的なテスト設計と改善提案</p>
+            </div>
+
+            <div class="session">
+              <div class="session-header">
+                <span class="session-number">第6時</span>
+                <span class="session-focus">振り返りと発表</span>
+              </div>
+              <h3>改善提案と学びの成果を共有する</h3>
+              <ul>
+                <li>システム改善案（例：割引処理、在庫補充通知）を短い企画書にまとめる</li>
+                <li>プロジェクト全体を振り返り、作業分解（WBS）と役割を整理</li>
+                <li>改善提案とテスト結果を発表し、相互評価とふり返りカードを記入</li>
+              </ul>
+              <p class="session-focus">評価：成果物の構造化と振り返り</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="project">
+          <h2>🛠 探究プロジェクトの進め方</h2>
+          <div class="grid">
+            <div class="card">
+              <h3>準備物（教師）</h3>
+              <ul>
+                <li>FesPos テンプレートシートのコピー（班ごとに配布）</li>
+                <li>README／manual／curriculum の印刷・共有リンク</li>
+                <li>付箋・模造紙・マグネットなどのアイデア整理ツール</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>学習者の役割例</h3>
+              <ul>
+                <li>プロジェクトマネージャー：進行と振り返りを担当</li>
+                <li>UX デザイナー：ワイヤーフレームと情報整理</li>
+                <li>データ／テスト担当：テストケースと改善提案の検証</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>成果物</h3>
+              <ul>
+                <li>情報の流れ図・ユーザーストーリーマップ</li>
+                <li>UI 改善案／フローチャート／テストケース表</li>
+                <li>改善企画書（A3 1枚）と発表スライド 3 枚程度</li>
+              </ul>
+            </div>
+          </div>
+          <div class="success-box">
+            <strong>ICT 活用の工夫</strong>
+            <ul>
+              <li>Google スプレッドシートで共同編集し、コメント機能でレビュー。</li>
+              <li>Jamboard やスクリーンショットで UI 評価を共有。</li>
+              <li>clasp や Apps Script エディタのログを使って動作確認を補助。</li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="assessment">
+          <h2>📝 評価規準と観点別評価方法</h2>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 18%">観点</th>
+                <th style="width: 32%">観点別評価規準（例）</th>
+                <th style="width: 30%">評価方法</th>
+                <th style="width: 20%">該当活動</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>知識・理解<br />（情報社会）</td>
+                <td>情報システムの機能と社会的影響を、資料を根拠に説明できる。</td>
+                <td>導入時のワークシート、振り返りカード、口頭発表の内容</td>
+                <td>第1・6時</td>
+              </tr>
+              <tr>
+                <td>思考・判断・表現<br />（情報デザイン）</td>
+                <td>利用者の視点で要件や UI を再構成し、改善案を具体的に提案できる。</td>
+                <td>ストーリーマップ、ワイヤーフレーム、改善提案書</td>
+                <td>第2・3・6時</td>
+              </tr>
+              <tr>
+                <td>技能<br />（プログラミング）</td>
+                <td>アルゴリズムやテストケースを構造的に表現し、根拠をもって説明できる。</td>
+                <td>フローチャート、疑似コード、テストケース表、相互レビュー</td>
+                <td>第4・5時</td>
+              </tr>
+              <tr>
+                <td>主体的に学習に取り組む態度</td>
+                <td>協働的に役割を果たし、振り返りを通して学びを次に生かそうとしている。</td>
+                <td>観察記録、プロジェクトジャーナル、自己評価コメント</td>
+                <td>全時</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="connections">
+          <h2>🔗 教科横断と主体的・対話的で深い学び</h2>
+          <div class="grid">
+            <div class="card">
+              <h3>他教科との連携例</h3>
+              <ul>
+                <li>数学：データ分析（売上推移の統計処理）</li>
+                <li>家庭科／商業：販売計画・食材管理との連携</li>
+                <li>国語・英語：操作マニュアルや案内文の多言語化</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>探究的な学びの深化</h3>
+              <ul>
+                <li>文化祭当日を想定したロールプレイで、システム活用の課題を検証</li>
+                <li>地域イベントや SDGs（食品ロス vs. 適正在庫）への展開を考える</li>
+                <li>AI（Gemini 連携）の活用価値と倫理を討議する</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>学習評価のフィードバック</h3>
+              <ul>
+                <li>スプレッドシートコメントでリアルタイムに指導・助言</li>
+                <li>Rubric（三段階）で観点別評価を可視化し自己評価と比較</li>
+                <li>成果物を文化祭実行委員会等に共有し、社会的承認を得る</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section id="resources">
+          <h2>📎 教材・参照資料</h2>
+          <ul class="reference-list">
+            <li>※1 文部科学省（2018）『高等学校学習指導要領（平成30年告示）解説 情報編』 情報Ⅰ 第3章 情報社会のための科学的な理解。</li>
+            <li>文部科学省（2021）『情報Ⅰ 学習指導要領（令和3年3月一部改訂）』資料編。</li>
+            <li>文化祭スマートPOS（FesPos）プロジェクト：<code>README.md</code>／<code>manual.html</code>／<code>code.js</code>。</li>
+            <li>学校現場での活用例：総務省「テレワーク先進事例集」内、地域イベントのICT活用事例。</li>
+          </ul>
+          <div class="info-box">
+            <strong>配布用テンプレート</strong>
+            <p>
+              <a href="https://docs.google.com/spreadsheets/d/1uV9rM0tl7rWimjAZThQIgJ1J7DdlsTZTFXPMUph4XOQ/copy" target="_blank">文化祭スマートPOS スプレッドシート（コピー用）</a><br />
+              プロジェクト開始前に班ごとにコピーを作成し、編集権限を付与してください。
+            </p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <footer>
+      © 2025 FesPos Project — 本カリキュラムは情報Ⅰの学習指導要領に基づき作成しています。
+    </footer>
+
+    <script>
+      const sidebar = document.getElementById("sidebar");
+      const navLinks = Array.from(document.querySelectorAll(".nav-link"));
+      const sections = navLinks.map((link) =>
+        document.querySelector(link.getAttribute("href"))
+      );
+
+      function toggleSidebar() {
+        sidebar.classList.toggle("open");
+      }
+
+      function setActiveLink() {
+        const scrollPosition = window.scrollY + 140;
+        let currentIndex = 0;
+        sections.forEach((section, index) => {
+          if (section.offsetTop <= scrollPosition) {
+            currentIndex = index;
+          }
+        });
+        navLinks.forEach((link, index) => {
+          if (index === currentIndex) {
+            link.classList.add("active");
+          } else {
+            link.classList.remove("active");
+          }
+        });
+      }
+
+      window.addEventListener("scroll", setActiveLink);
+      setActiveLink();
+
+      navLinks.forEach((link) => {
+        link.addEventListener("click", () => {
+          sidebar.classList.remove("open");
+        });
+      });
+    </script>
+  </body>
+</html>
